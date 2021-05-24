@@ -1,0 +1,255 @@
+# Pixset dataset configuration file
+# Leddartech 2020
+
+synchronization:
+  sync_labels: ['*ech*', '*_img*', '*_flimg*','*_ftrr*']
+  interp_labels: ['*_xyzit*', 'sbgekinox_*', 'peakcan_*', '*temp', '*_xyzvcfar']
+  tolerance_us: 2000
+
+virtual_datasources:
+  # Virtual datasources added by default to the platform.
+  # See "pioneer.das.api/pioneer/das/api/datasources/virtual_datasources/" for a description
+  # of each virtual datasource and their parameters
+
+  cylindrical_projection: #Triple camera fusion
+    reference_sensor: 'flir_bfc'
+    dependencies: ['flir_bfl_img','flir_bfc_img','flir_bfr_img']
+    radius: 50.0
+    fov_h: 210 
+    fov_v: 67.5 
+    image_h: 2000 
+    image_v: 500 
+    fusion_overlap_ratio: 0.25
+
+  voxel_map_pixell: #Fusion of sequential Pixell point clouds
+    reference_sensor: 'pixell_bfc'
+    dependencies: ['pixell_bfc_ech']
+    memory: 50
+
+  voxel_map_ouster: #Fusion of sequential Ouster64 point clouds
+    reference_sensor: 'ouster64_bfc'
+    dependencies: ['ouster64_bfc_xyzit']
+    memory: 10
+    skip: 2
+
+  rgb_cloud_pixell: #Fusion of Pixell point cloud with RGB camera images
+    reference_sensor: 'pixell_bfc'
+    dependencies: ['pixell_bfc_ech','flir_bbfc_flimg']
+    undistort: True
+
+  rgb_cloud_ouster: #Fusion of Ouster64 point cloud with RGB camera images
+    reference_sensor: 'ouster64_bfc'
+    dependencies: ['ouster64_bfc_xyzit','flir_bbfc_flimg']
+    undistort: True
+
+  voxel_map_pixell-rgb: #Fusion of sequential Pixell point clouds with sequential RGB camera images
+    reference_sensor: 'pixell_bfc'
+    dependencies: ['pixell_bfc_xyzit-rgb']
+    memory: 50
+
+  voxel_map_ouster-rgb: #Fusion of sequential Ouster64 point clouds with sequential RGB camera images
+    reference_sensor: 'ouster64_bfc'
+    dependencies: ['ouster64_bfc_xyzit-rgb']
+    memory: 10
+    skip: 2
+
+
+peakcan_fcc:
+  configurations:
+    device: "/dev/pcanusb32"
+    baudrate: "500000"
+  dbc: "./RAV4_config/rav4.dbc"
+  can_frames:
+    WHEEL_SPEEDS:
+      [WHEEL_SPEED_FR, WHEEL_SPEED_FL, WHEEL_SPEED_RR, WHEEL_SPEED_RL]
+    KINEMATICS: [ACCEL_Y, YAW_RATE, STEERING_TORQUE]
+    SPEED: [ENCODER, CHECKSUM, SPEED]
+    ACCELEROMETER: [ACCEL_Z, ACCEL_X]
+    STEER_ANGLE_SENSOR: [STEER_ANGLE, STEER_FRACTION, STEER_RATE]
+    BRAKE_MODULE: [BRAKE_PRESSURE, BRAKE_PRESSED]
+    GAS_PEDAL: [GAS_RELEASED, GAS_PEDAL]
+
+
+pixell_bfc:
+  configurations:
+    frequency:
+      ID_ACCUMULATION_EXP: 64
+      ID_OVERSAMPLING_EXP: 8
+      data_masks: PDM_ECHOES PDM_STATES
+      license: LedAdministrator
+      enable_fast_raw_traces: True
+      set_system_time_to_pc_time: False
+      enable_ext_trigger: True
+      enable_ptp: True
+      traces_start_index: 0
+      ntraces: 768
+      ts_offset_us: 0 #-1650
+  export:
+    leap_seconds: -37.0
+  ip: "192.168.0.2"
+  intrinsics: &intrinsics_folder "intrinsics"
+  extrinsics: &extrinsics_folder "extrinsics"
+
+flir_bfr:
+  configurations: &flir_config
+    img: &flir_img_config
+      OffsetX: 0
+      OffsetY: 0
+      Width: 1440
+      Height: 1080
+      PixelFormat: "BayerRG8"
+      BinningHorizontal: 1
+      BinningVertical: 1
+    ptp: &flir_ptp_config
+      GevIEEE1588Mode: "SlaveOnly"
+      GevIEEE1588: True
+      ChunkModeActive: True
+      ChunkSelector: "Timestamp"
+      ChunkEnable: True
+      TSoffset: 0 #-37000000
+    trig: &flir_trigger_config
+      TriggerSource: "Line0"
+      TriggerActivation: "RisingEdge"
+      AcquisitionImageTimestamp: "StartOfExposure"
+      TriggerMode: "On"
+    transport: &flir_transport_config
+      GevSCPSPacketSize: 9000
+      GevSCPD: 1
+    auto_exposure: &flir_auto_exposure_config
+      ExposureAuto: "Continuous"
+  export: &flir_exportation_config
+      format: 'jpg' # 'png' or 'jpg
+      leap_seconds: -37.0
+  serial: 20089026
+  intrinsics: *intrinsics_folder
+  extrinsics: *extrinsics_folder
+
+flir_bfc:
+  configurations: *flir_config
+  export: *flir_exportation_config
+  serial: 20063638
+  intrinsics: *intrinsics_folder
+  extrinsics: *extrinsics_folder
+
+flir_bfl:
+  configurations: *flir_config
+  export: *flir_exportation_config
+  serial: 20088968
+  intrinsics: *intrinsics_folder
+  extrinsics: *extrinsics_folder
+
+flir_bbfc:
+  configurations: *flir_config
+  export: *flir_exportation_config
+  serial: 20063635
+  intrinsics: *intrinsics_folder
+  extrinsics: *extrinsics_folder
+
+ouster64_bfc:
+  configurations:
+    RemotePortLidar: 7502
+    RemotePortImu: 7503
+
+  export:
+    lidarmode: "2048x10"
+    intrinsic_file: "./RAV4_config/ouster_calib_os1-64.txt"
+    leap_seconds: -37.0
+  extrinsics: *extrinsics_folder
+  intrinsics:
+    temperature:
+      device: "/dev/ttyUSB1" # record datasource temp from ardunio serial port
+      reference: 0.15
+      slope: 0
+
+sbgekinox_bcc:
+  configurations:
+    DestinationIP: "192.168.0.43"
+    Port: 8080
+  extrinsics: *extrinsics_folder
+
+radarTI_bfc:
+  configurations:
+    # the radar acquisition board DCA1000 IP is always the same (192.168.33.180) our computer need to use: 192.168.33.30
+    # udp_port_config: 4096, udp_port_data: 4098 just to remember, not possible to change it in DCA1000
+    # uarts need udev rules, at startup they switch together ! don't forget to add our user name to dialout group
+    uart_config: "/dev/ttyACM0"
+    uart_echoes: "/dev/ttyACM1"
+    radar_config_file: './RAV4_config/SDK3-2_13mps_50m_2Tx_FWD.cfg'
+
+
+ignore:
+  camera_intrinsics:
+    # chessboard used for camera intrinsics
+    chessboard:
+      nx: 4 # number of columns of corners
+      ny: 3 # number of rows of corners
+      dx: 0.145 # width of a chessboad square
+      dy: 0.145 # height of a chessboard square
+
+      reflective_spheres: [
+          {
+            # [x, y] == [col, row]
+            corner_xy: [3, 0],
+            # offsets x, y
+            offsets: [0.03, 0.03],
+          },
+        ]
+
+  rtmaps_record:
+    guiStopDiagram:
+      configurations:
+        text: "shutdown"
+
+    guiDisplay2d:
+      configurations:
+        images:
+          - "flir_bfc"
+          - "flir_bfl"
+          - "flir_bfr"
+          - "flir_bbfc"
+
+        amplitudes:
+          - { source: "pixell_bfc", rotate: False }
+          # - { source: "lca2_bfrl", rotate: True }
+          # - { source: "eagle_tfc", rotate: True }
+          #- {source: 'lca2_bfl', rotate: False}
+
+    guiCheckSampleRate:
+      configurations:
+        sensors: # min and max in Hz
+          - { source: "ouster64_bfc", min: 1100.0, max: 1400.0 }
+          - { source: "pixell_bfc", min: 9.0, max: 11.0 }
+          - { source: "flir_bfc", min: 9.0, max: 11.0 }
+          - { source: "flir_bfl", min: 9.0, max: 11.0 }
+          - { source: "flir_bfr", min: 9.0, max: 11.0 }
+          - { source: "flir_bbfc", min: 9.0, max: 11.0 }
+          - { source: "peakcan_fcc", min: 900.0, max: 1100.0 }
+          - { source: "radarTI_bfc", min: 3500.0, max: 3700.0 }
+        leds: True
+
+    guiCheckSynchro:
+      configurations:
+        reference: { sensor: "sbgekinox_bcc", signal: "event_D" }
+        sensors: # synchro_tolerance (us) should be << sample rate / 2
+          - { source: "flir_bfc", synchro_tolerance: 1000 , leap_seconds: -37.0}
+          - { source: "flir_bfr", synchro_tolerance: 1000 , leap_seconds: -37.0}
+          - { source: "flir_bfl", synchro_tolerance: 1000 , leap_seconds: -37.0}
+          - { source: "flir_bbfc", synchro_tolerance: 1000 , leap_seconds: -37.0}
+          - { source: "pixell_bfc", synchro_tolerance: 2000 , leap_seconds: -37.0}
+        leds: True
+    guiCheckGPS:
+      configurations:
+        IMU_name: "sbgekinox_bcc"
+        sigma_position_max: 0.1
+        age_corrections_max: 3.0
+    diskUsage:
+      configurations:
+        disk_device: "/dev/sda4"
+        orange_threshold: 100 # size in GB
+        red_threshold: 25 # size in GB
+
+    ousterPtpCheck:
+      configurations:
+        ip: "192.168.0.50"
+        tolerance_ms: 100
+        leap_seconds: -37.0
